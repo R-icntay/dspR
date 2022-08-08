@@ -1,0 +1,459 @@
+---
+title: "Introduction to Digital Signal Processing using R"
+author: "Eric Wanjau, Ian Muchiri"
+toc: true
+format: 
+  html:
+    number-sections: true
+    toc-location: left
+    code-tools: true
+    code-fold: false
+    code-link: true
+editor: visual
+execute: 
+  warning: false
+  message: false
+bibliography: references.bib
+---
+
+```{r}
+#| include: false
+# Function to embed audio in notebooks
+html_tag_audio <- function(file, type = c("wav")){
+  type = match.arg(type)
+  htmltools::tags$audio(
+    controls = NA,
+    htmltools::tags$source(
+      src = file,
+      type = glue::glue("audio/{type}")
+    )
+    
+  )
+}
+
+```
+
+::: callout-important
+In this notebook, we attempt to make `R` implementations of the examples covered in `chapter 1: Introduction` in the book [@ingle2016digital]:
+
+[Digital Signal Processing Using MATLAB®: A Problem Solving Companion, International Edition](https://www.cengage.co.uk/books/9781305637535/)
+
+As such, please refer to the book above for in depth explanations of the underlying concepts.
+:::
+
+This chapter introduces readers to the discipline of signal processing and presents several applications of digital signal processing, including musical sound processing, echo generation, echo removal, and digital reverberation.
+
+## Overview of digital signal processing
+
+Signal processing is an operation designed for preprocessing, extracting, enhancing, storing, and transmitting useful information.
+In an engineering context, signals are carriers of information, both useful and unwanted.
+Therefore, extracting or enhancing the useful information from a mix of conflicting information is the simplest form of signal processing.
+
+Most signals in practice are analog signals i.e they vary continuously in time and amplitude.
+These signals can be processed directly by passing them through an *analog signal processor* or using digital hardware as represented below:
+
+![Image from Digital Signal Processing Using MATLAB 4th Edition](images/dsp_system.PNG)
+
+::: callout-tip
+`PrF` represents a prefilter or an antialiasing filter, which conditions the analog signal to prevent aliasing.
+
+`ADC`: Analog to Digital Converter which converts analog signals to a stream of binary numbers.
+
+`DSP`: Digital Signal Processor - a general purpose computer or processor or digital hardware that performs signal processing.
+
+`DAC`: Digital to Analog Converter which performs the first step towards producing an analog signal i.e produces a staircase waveform from a sequence of binary numbers.
+
+`PoF`: Post Filter smooths out the staircase waveform into the desired analog signal.
+:::
+
+One might ask, why process signals digitally as opposed to simply passing them through an analog signal processor?
+The answer lies in the many advantages of DSP.
+Some of them include:
+
+1.  DSP operations are based solely on additions and multiplications, leading to extremely stable processing capability---for example, stability independent of temperature.
+2.  DSP can be done on software making it convenient to develop, test, and modify in real time.
+
+::: callout-tip
+Please see the reference text for more advantages.
+:::
+
+## A brief introduction to R for Digital Signal Processing
+
+Many users think of R as a statistics system.
+Taking a page out of Hadley Wickham's book (literally; see [Advanced R](https://adv-r.hadley.nz/introduction.html#introduction)) and all the incredible things we see daily in the R community ([#rstats Twitter](https://twitter.com/search?q=%23rstats)), we think of R as a beautiful and elegant language well designed for Data Science, Finance, Genetics, High Performance Computing, Machine Learning, Medicine, Pharma & Medical Imaging, Social Sciences, Spatial Statistics, Generative Art and many more!
+This is because R's capabilities can be easily extended through user-created packages and R can easily connect to high-performance programming languages like C, Fortran, and C++.
+
+In this section, we'll undertake a brief review of R in the context of signal processing.
+
+::: callout-tip
+Below are some useful resources to get you started with R:
+
+-   [Rstudio Primers](https://rstudio.cloud/learn/primers)
+
+-   [R for Data Science](https://r4ds.had.co.nz/)
+
+-   [Hands-On Programming with R](https://rstudio-education.github.io/hopr/index.html)
+
+-   [Microsoft Learn: Explore and analyze data with R](https://docs.microsoft.com/en-us/learn/modules/explore-analyze-data-with-r/?WT.mc_id=academic-59300-cacaste)
+:::
+
+### Example 1.1 {.unnumbered}
+
+Consider the following sum of sinusoidal functions:
+
+$$
+x(t) \ = \ sin(2 \pi t) + \frac{1}{3}sin(6 \pi t) + \frac{1}{5}sin(10 \pi t) \ = \ \sum_{k = 1, 3, 5}\frac{1}{k}sin(2 \pi k t),  \ \ \ 0 \leq t \leq 1
+$$
+
+Using R, we want to generate samples of $x(t)$ at time instances `0:0.01:1`.
+
+There are numerous ways to approach this in R.
+We'll consider a few.
+
+```{r}
+# Set up
+library(tidyverse)
+library(here)
+t <-  seq(from = 0, to = 1, by = 0.01)
+k <- seq(from = 1, to = 5, by = 2)
+```
+
+::: panel-tabset
+## k
+
+```{r}
+k
+```
+
+## t
+
+```{r}
+t
+```
+:::
+
+#### Approach 1 {.unnumbered}
+
+In this approach, we evaluate $x(t)$ at each $k$ and then add the individual results at each $t$ to obtain the total sum of the function $x(t)$:
+
+```{r}
+# Evaluate xt
+xt <- map(k, function(k) 1/k*sin(2*pi*k*t)) %>%
+  pmap_dbl(sum)
+
+# Print out the first 10 observations
+xt[1:10] %>% round(digits = 4)
+```
+
+#### Approach 2 {.unnumbered}
+
+In this approach, we iterate through each $t$, evaluating $\sum_{k = 1, 3, 5}\frac{1}{k}sin(2 \pi k t)$
+
+```{r}
+# Evaluate xt
+xt <- map_dbl(t, ~ map2_dbl(.x,
+                            k,
+                            function(t, k) 1/k*sin(2*pi*k*t)) %>% sum())
+
+# Print out the first 10 observations
+xt[1:10] %>% round(digits = 4)
+```
+
+#### Approach 3 {.unnumbered}
+
+Let's work in tibbles!
+In this approach, we generate all possible combinations of $t$ and $k$, evaluate $x(t)$ for each unique combination of $t$ and $k$, and then sum the results at each time instance $t$
+
+```{r}
+# Evaluate xt
+results <- crossing(t, k) %>%
+  # Evaluate xt for each t and k
+  mutate(xt = 1/k * sin(2*pi*k*t)) %>% 
+  # Sum results for each time instance t
+  group_by(t) %>% 
+  summarize(xt = sum(xt) %>% round(digits = 4))
+
+# View first 10 observations
+results %>% 
+  slice_head(n = 10)
+```
+
+## Plotting
+
+One of the most important features in analyzing and understanding signals is data plotting.
+There are several packages for creating graphics in R.
+In this section we'll visualize signals using [@ggplot2], a package that allows you to create elegant visualizations based on "The Grammar of Graphics".
+
+In the code chunk below, we create a vector of sample points, evaluate the sine function at those points, and then generate a plot of a simple sinusoidal wave, putting axis labels and title on the plot:
+
+```{r}
+#| label: fig-ct_plot
+#| fig-cap: Plot of the sin(2πt) function 
+
+# Create sample points from 0 to 2 in steps of 0.01
+t <- seq(0, 2, 0.01)
+
+# Evaluate sin(2 pi t)
+xt <- sin(2*pi*t)
+
+# Combine t an xt into a tibble
+ct_sig <- tibble(t, xt)
+
+
+# Create a sinusoidal wave
+theme_set(theme_light())
+ct_plot <- ggplot(data = ct_sig) +
+  geom_path(mapping = aes(x = t, y = xt), size = 1) +
+  # Add plot labels
+  labs(
+    title = expression(paste("Plot of sin(2", pi, "t)", sep = "")),
+    x = "t in sec",
+    y = "x(t)"
+  ) +
+  # Centre title
+  theme(plot.title = element_text(hjust = 0.5))
+
+ct_plot
+```
+
+@fig-ct_plot is an example of an **continuous-time signal** with $x(t)$ varying continuously with $t$.
+
+For plotting a set of discrete numbers (or **discrete-time signals**), we will display data values as a stem, that is, a small circle at the end of a line connecting it to the horizontal axis.
+Let's display a discrete-time sine function as a stem plot:
+
+```{r}
+#| label: fig-dt_plot
+#| fig-cap: Plot of the sin(0.1πn) sequence
+
+
+dt_sig <- tibble(
+  # Sample index from 0 to 40
+  n = seq(0, 40, 1),
+  # Evaluate sin(0.1 pi n)
+  xn = sin(0.1*pi*n)
+  )
+
+# Create stem plot
+dt_plot <- ggplot(dt_sig) +
+  # Draw straight line between points
+  geom_segment(mapping = aes(x = n, xend = n,
+                             y = 0, yend = xn)) +
+  # Add circles at the end of the lines
+  geom_point(aes(x = n, y = xn)) +
+  # Add plot labels
+  labs(
+    title = expression(paste("Stem Plot of sin(0.1", pi, "n)", sep = "")),
+    x = "n",
+    y = "x(n)"
+  ) +
+  # Centre title
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+dt_plot
+```
+
+Perfect!
+Sometimes for comparison, it is useful to stack up plots.
+To do this, we can leverage the [patchwork package](https://patchwork.data-imaginist.com/) ([@patchwork])that allows us to combine multiple plots using mathematical operators:
+
+```{r}
+#| label: fig-cdt_sig
+#| fig-cap: Plots of x(t) and x(n) in two rows
+library(patchwork)
+
+ct_plot / dt_plot
+```
+
+Another approach would be to overlay @fig-ct_plot and @fig-dt_plot as one plot, depicting a `sampling` operation that we will study later:
+
+```{r}
+#| label: fig-ct_dt_overlay
+#| fig-cap: Simultaneous plots of x(t) and x(n)
+# Overlay x(t) and x(n)
+ggplot() +
+  geom_path(data = ct_sig, mapping = aes(x = t, y = xt),
+            size = 1,
+            color = "dodgerblue") +
+  geom_segment(data = dt_sig %>% mutate(n = n*0.05),
+               mapping = aes(x = n, xend = n,
+                             y = 0, yend = xn)) +
+  geom_point(data = dt_sig %>% mutate(n = n*0.05),
+             mapping = aes(x = n, y = xn)) +
+  labs(
+    title = expression(paste("Plot of sin(2", pi, "t) and its samples", sep = "")),
+    x = "t in Sec",
+    y = "x(t) and x(n)"
+  ) +
+  # Centre title
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+As evident from the plots above `ggplot2` provides a flexible and intuitive way of creating graphs by combining independent components of a graphic in a series of iterative steps.
+This allows you to create visualizations that match your needs rather than being limited to sets of predefined graphics.
+
+## Applications of DSP: Musical sound processing
+
+Over the last several decades, the field of DSP has matured considerably and is at the core of many diverse applications and products such as:
+
+-   speech/audio (speech recognition/synthesis, digital audio, equalization, etc.)
+
+-   biomedical/health care (scanners, ECG analysis, X-ray analysis, EEG brain mappers, etc.)
+
+::: callout-note
+Please see the reference text for more applications.
+:::
+
+Let's take a look at how DSP is typically applied in musical sound processing.
+
+### Musical sound processing
+
+In musical sound processing, audio effects are artificially generated using various signal processing techniques such as echo generation and reverberation (concert hall effect), flanging, etc.
+Let's explore a few of these sound effects in some detail:
+
+#### Echo generation
+
+This is typically the most basic of all audio effects and is used as the building block of more complicated effects such as reverb or flanging.
+At their core, echoes are delayed signals, and as such, they are generated using delay units.
+
+For example, a sound represented by a discrete signal $y[n]$ and a single echo appearing $D$ seconds later can be generated using an equation called a **difference equation** of the form:
+
+$$
+x[n] = y[n] + \alpha y[n-D], \ \ \ |\alpha| < 1
+$$ {#eq-delay}
+
+@eq-delay shows the resulting signal $x[n]$ after combining the original sound and its delayed version.
+$\alpha$ models the attenuation of the original sound.
+
+Such a difference equation can be implemented in R using the `filter()` function from the [`signal`](https://cran.r-project.org/web/packages/signal/signal.pdf) package [@signal].
+
+We'll experiment with echo generation using a short snippet of Handel's "Hallelujah Chorus" (available in [MATLAB](https://uk.mathworks.com/help/matlab/ref/audioread.html)) which is a digital sound *9* seconds long sampled at *8192* samples/second.
+
+```{r}
+#| echo: false
+library(audio)
+## Create wave file
+#save.wave(audioSample(y, rate = 8192), "handel.wav")
+
+# Attach wave file
+html_tag_audio(file = ("handel.wav"))
+```
+
+Next, we add an echo delayed by *D = 4196* samples which is approximately *5 seconds* of delay (i.e $4196 \times \frac{1}{8192}$):
+
+```{r}
+library(signal)
+library(audio)
+# Load signal
+y <- read_lines("handel.txt") %>% 
+  as.double()
+
+# Sample rate
+Fs <- 8192
+
+# Echo parameters
+alpha <- 0.9
+D <- 4196
+
+# Filter parameters
+b <- c(1, rep.int(0, times = D), alpha)
+
+# Generate sound plus its echo
+x <- signal::filter(filt = b, a = 1, y)
+
+# Play sound with echo
+audio::play(x, Fs)
+```
+
+```{r}
+#| echo: false
+library(audio)
+## Create wave file
+#save.wave(audioSample(x, rate = 8192), "handel_echo.wav")
+
+# Attach wave file
+html_tag_audio(file = ("handel_echo.wav"))
+```
+
+A distinct echo of the chorus should be audible in about half a second.
+
+#### Echo removal
+
+Again DSP can be used to effectively reduce echoes by simply reordering the code and applying the filter operation to the echo-corrupted signal:
+
+```{r}
+w <- signal::filter(filt = 1, a = b, x)
+audio::play(w, Fs)
+```
+
+```{r}
+#| echo: false
+library(audio)
+## Create wave file
+#save.wave(audioSample(w, rate = 8192), "handel_no_echo.wav")
+
+# Attach wave file
+html_tag_audio(file = ("handel_no_echo.wav"), type = "wav")
+```
+
+The echo should now be hardly audible.
+
+## Summary
+
+In this brief chapter, we have skimmed through some of the concepts in signal processing, its applications and how these operations and computations can be easily implemented and visualized using R.
+Please refer to [@ingle2016digital] for in depth explanations of the underlying concepts.
+
+```{r}
+#| include: false
+#| eval: false
+
+# What if we sampled at 100 Hz
+dt_sig2 <- tibble(
+  # Sample index from 0 to 40
+  n = seq(0, 200, 1),
+  # Evaluate sin(0.1 pi n)
+  xn = sin(0.02*pi*n)
+  )
+
+# Create stem plot
+dt_plot2 <- ggplot(dt_sig2) +
+  # Draw straight line between points
+  geom_segment(mapping = aes(x = n, xend = n,
+                             y = 0, yend = xn)) +
+  # Add circles at the end of the lines
+  geom_point(aes(x = n, y = xn)) +
+  # Add plot labels
+  labs(
+    title = expression(paste("Stem Plot of sin(0.02", pi, "n)", sep = "")),
+    x = "n",
+    y = "x(n)"
+  ) +
+  # Centre title
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+dt_plot2
+```
+
+```{r}
+#| include: false
+#| eval: false
+
+# What if we sampled at 100 Hz
+ggplot() +
+  geom_path(data = ct_sig, mapping = aes(x = t, y = xt),
+            size = 1,
+            color = "dodgerblue") +
+  geom_segment(data = dt_sig2 %>% mutate(n = n*0.01),
+               mapping = aes(x = n, xend = n,
+                             y = 0, yend = xn)) +
+  geom_point(data = dt_sig2 %>% mutate(n = n*0.01),
+             mapping = aes(x = n, y = xn)) +
+  labs(
+    title = expression(paste("Plot of sin(2", pi, "t) and its samples", sep = "")),
+    x = "t in Sec",
+    y = "x(t) and x(n)"
+  ) +
+  # Centre title
+  theme(plot.title = element_text(hjust = 0.5))
+```
