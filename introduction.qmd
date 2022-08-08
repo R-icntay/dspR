@@ -401,7 +401,14 @@ The echo should now be hardly audible.
 ## Summary
 
 In this brief chapter, we have skimmed through some of the concepts in signal processing, its applications and how these operations and computations can be easily implemented and visualized using R.
-Please refer to [@ingle2016digital] for in depth explanations of the underlying concepts.
+In the next chapter, we will explore how to analyze discrete signals in the time domain.
+Stay tuned!
+
+::: callout-tip
+Since the main goal of these notebooks is to demonstrate the use of R in DSP, please refer to [@ingle2016digital] for in depth explanations of the underlying theory and concepts.
+
+Happy leaRning!
+:::
 
 ```{r}
 #| include: false
