@@ -1,0 +1,205 @@
+---
+title: "Chapter 2: Discrete-Time Signals and Systems"
+author: "Eric Wanjau"
+toc: true
+format: 
+  html:
+    number-sections: true
+    toc-location: left
+    code-tools: true
+    code-fold: false
+    code-link: true
+editor: visual
+execute: 
+  warning: false
+  message: false
+bibliography: references.bib
+---
+
+::: callout-important
+The aim of this chapter is to demonstrate how to represent and implement discrete-time signals and systems using R.
+Please refer to `chapter 2: Discrete-Time Signals and Systems` of [@ingle2016digital]:
+
+[Digital Signal Processing Using MATLAB: A Problem Solving Companion, International Edition](https://www.cengage.uk/c/co/9781305637535/)
+
+for in depth explanations of the underlying theory and concepts.
+:::
+
+## Discrete-time signals
+
+Signals are broadly classified into two categories; analog signals $x_a (t)$ and discrete signals $x[n]$.
+In discrete signals, the variable $n$ is an integer which represents discrete instances in time, hence the alternative name `discrete-time signals`.
+
+### Types of sequences
+
+There are several elementary sequences for DSP.
+Let's take a brief look at their definitions and R representations:
+
+#### 1. Unit sample sequence {.unnumbered}
+
+The *unit sample sequence* is defined as the sequence:
+
+$$
+\delta [n] =  \biggl\{{1, \ \ \ \ \  n = 0, \\
+0, \ \ \ \ \ n \neq 0.}
+$$
+
+The unit sample sequence is typically referred to as an `impulse`.
+For example, the signal
+
+$$
+\delta [n-n_0] =  \biggl\{{1, \ \ \ \ \  n = n_0, \\
+0, \ \ \ \ \ n \neq n_0.}
+$$ {#eq-impulse}
+
+over the interval $n_1\leq n_0\leq n_2$ , can be implemented and represented in R as:
+
+```{r}
+library(tidyverse)
+
+# Function that evaluates impulse sequence
+gen_impulse <- function(n0, n1, n2){
+  # Generates x(n) = delta(n-n0); n1 <= n <= n2
+  
+  # Generate sequence 
+  n = n1:n2
+  # If n = n0, n-n0 = 1
+  x = as.numeric((n - n0) == 0)
+  
+  return(tibble(n, x))
+  
+}
+
+# Call function
+imp_seq <- gen_impulse(n1 = -5, n0 = 0, n2 = 5) 
+
+imp_seq
+```
+
+We can represent this visually too:
+
+```{r}
+#| label: fig-impulse
+#| fig-cap: Unit sample sequence
+theme_set(theme_light())
+ggplot(data = imp_seq) +
+  geom_segment(mapping = aes(
+    x = n,
+    xend = n,
+    y = 0,
+    yend = x
+  )) +
+  geom_point(mapping = aes(x = n, y = x)) +
+  ggtitle("Unit sample") +
+  xlab("n") +
+  ylab(expression(paste(delta, "[n]", sep = ""))) +
+  theme(
+    # Adjust title position
+    plot.title = element_text(hjust = 0.5))
+```
+
+We can wrap the plotting code into a re-usable function as well:
+
+```{r}
+# Function that returns a stem plot
+seq_plot <- function(tbl){
+  ggplot(data = tbl) +
+  geom_segment(mapping = aes(
+    x = n,
+    xend = n,
+    y = 0,
+    yend = x
+  )) +
+  geom_point(mapping = aes(x = n, y = x)) +
+  xlab("n") +
+  ylab(paste("x[n]", sep = "")) +
+  theme(
+    # Adjust title position
+    plot.title = element_text(hjust = 0.5))
+}
+```
+
+#### 2. Unit step sequence {.unnumbered}
+
+The unit step sequence is defined as:
+
+$$
+u [n] =  \biggl\{{1, \ \ \ \ \  n \geq 0, \\
+0, \ \ \ \ \ n < 0.}
+$$
+
+Again, let's implement and visualize the following unit step sequence:
+
+$$
+u [n - n_0] =  \biggl\{{1, \ \ \ \ \  n \geq n_0, \\
+0, \ \ \ \ \ n < n_0.}
+$$
+
+over the interval $n_1\leq n_0\leq n_2$
+
+```{r}
+# Function that generates x(n) = u(n-n0); n1 <= n <= n2
+gen_stepseq <- function(n0, n1, n2){
+  n = n1:n2
+  x = if_else(n >= n0, true = 1, false = 0)
+  ## Alternative evaluation
+  #x = if_else(n-n0 >= 0, true = 1, false = 0)
+  
+  return(tibble(n, x))
+}
+
+# Call function
+step_seq <- gen_stepseq(n0 = 0, n1 = -5, n2 = 10)
+step_seq
+```
+
+Representing the signal as a graphic:
+
+```{r}
+#| label: fig-step_seq
+#| fig-cap: Unit step sequence
+#| fig-width: 5
+seq_plot(step_seq) +
+ggtitle("Unit step") 
+```
+
+#### 3. Real-valued exponential sequence {.unnumbered}
+
+Exponential sequences are another important class of basic signals.
+Real valued exponential sequences are generally represented as:
+
+$$
+x[n] = a^n, \forall n; \ \ \ \ a \in \R
+$$
+
+The formula simply means that if $a$ is a real number, then the sequence is real.
+
+::: callout-tip
+Here is a list of $LaTeX$ mathematical symbols and their meanings:
+
+<https://oeis.org/wiki/List_of_LaTeX_mathematical_symbols>
+:::
+
+Let's evaluate and visualize the sequence:
+
+$$
+x[n] = (0.8)^n, \ \ \ -5 \leq n \leq 10
+$$
+
+```{r}
+#| label: fig-rexp_seq
+#| fig-cap: Real-valued exponential sequence
+#| fig-width: 5
+
+
+# Real-valued exponential sequence
+real_exp_seq <- tibble(
+  n = -5:10,
+  x = 0.8 ^ n
+)
+
+# Create a stem plot of the sequence
+seq_plot(real_exp_seq) +
+ggtitle("Real exponential") 
+
+```

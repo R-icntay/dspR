@@ -1,6 +1,6 @@
 ---
-title: "Introduction to Digital Signal Processing using R"
-author: "Eric Wanjau, Ian Muchiri"
+title: "Chapter 1: Introduction"
+author: "Eric Wanjau"
 toc: true
 format: 
   html:
@@ -34,7 +34,7 @@ html_tag_audio <- function(file, type = c("wav")){
 ```
 
 ::: callout-important
-In this notebook, we attempt to make `R` implementations of the examples covered in `chapter 1: Introduction` in the book [@ingle2016digital]:
+In this notebook, we attempt to make `R` implementations of the examples covered in `chapter 1: Introduction` of the book [@ingle2016digital]:
 
 [Digital Signal Processing Using MATLAB®: A Problem Solving Companion, International Edition](https://www.cengage.co.uk/books/9781305637535/)
 
@@ -151,7 +151,7 @@ In this approach, we iterate through each $t$, evaluating $\sum_{k = 1, 3, 5}\fr
 
 ```{r}
 # Evaluate xt
-xt <- map_dbl(t, ~ map2_dbl(.x,
+xt <- map_dbl(t, ~ map_dbl(.x,
                             k,
                             function(t, k) 1/k*sin(2*pi*k*t)) %>% sum())
 
