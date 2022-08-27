@@ -40,16 +40,20 @@ Let's take a brief look at their definitions and R representations:
 The *unit sample sequence* is defined as the sequence:
 
 $$
-\delta [n] =  \biggl\{{1, \ \ \ \ \  n = 0, \\
-0, \ \ \ \ \ n \neq 0.}
+\delta [n] =  \begin{cases} 
+1, \ \ \ \ \  n = 0, \\
+0, \ \ \ \ \ n \neq 0.
+\end{cases}
 $$
 
 The unit sample sequence is typically referred to as an `impulse`.
 For example, the signal
 
 $$
-\delta [n-n_0] =  \biggl\{{1, \ \ \ \ \  n = n_0, \\
-0, \ \ \ \ \ n \neq n_0.}
+\delta [n-n_0] =  \begin{cases}
+1, \ \ \ \ \  n = n_0, \\
+0, \ \ \ \ \ n \neq n_0.
+\end{cases}
 $$ {#eq-impulse}
 
 over the interval $n_1\leq n_0\leq n_2$ , can be implemented and represented in R as:
@@ -124,15 +128,19 @@ seq_plot <- function(tbl){
 The unit step sequence is defined as:
 
 $$
-u [n] =  \biggl\{{1, \ \ \ \ \  n \geq 0, \\
-0, \ \ \ \ \ n < 0.}
+u[n] = \begin{cases}
+1, \ \ n\ge 0, \\
+0, \ \ n\le 0 .
+\end{cases}
 $$
 
 Again, let's implement and visualize the following unit step sequence:
 
 $$
-u [n - n_0] =  \biggl\{{1, \ \ \ \ \  n \geq n_0, \\
-0, \ \ \ \ \ n < n_0.}
+u [n - n_0] =  \begin{cases} 
+1, \ \ n \geq n_0, \\
+0, \ \ n < n_0.
+\end{cases}
 $$
 
 over the interval $n_1\leq n_0\leq n_2$
@@ -169,10 +177,11 @@ Exponential sequences are another important class of basic signals.
 Real valued exponential sequences are generally represented as:
 
 $$
-x[n] = a^n, \forall n; \ \ \ \ a \in \R
+x[n] = a^n, \forall n; \ \ \ \ a \in  \mathbb{R}
 $$
 
 The formula simply means that if $a$ is a real number, then the sequence is real.
+The sequence oscillates with an exponentially growing envelope if $|a| > 1$ or with an exponentially decaying envelope if $|a| < 1$
 
 ::: callout-tip
 Here is a list of $LaTeX$ mathematical symbols and their meanings:
@@ -203,3 +212,117 @@ seq_plot(real_exp_seq) +
 ggtitle("Real exponential") 
 
 ```
+
+#### 4. Complex-valued exponential sequence {.unnumbered}
+
+Now, let's consider the complex valued exponential sequence:
+
+$$
+x(n) = e^{(\sigma + j\omega_o)n}, \ \ \forall n
+$$
+
+$\sigma$ produces an attenuation (if \<0) or amplification (if \>0) and $\omega_o$ is the frequency in radians.
+
+The built-in `exp` function in R is used to compute the exponential function.
+
+For example, let's evaluate and visualise the following sequence:
+
+$$
+x(n) = exp[(2 + j3)n], \ \ for\ \ 0\leq n\le 10
+$$
+
+```{r}
+# Complex valued exponential sequence
+comp_exp_seq <- tibble(
+  n = 0:10,
+  x = exp((2+3i)*n))
+
+comp_exp_seq
+```
+
+#### 5. Sinusoidal sequence {.unnumbered}
+
+A sinusoidal sequence can be expressed as:
+
+$$
+x(n) = Acos(\omega_0 + \theta_0), \ \ \forall n
+$$
+
+where $A$ is an amplitude, $\theta_0$ is the phase in radians, $\omega_0$ is the frequency in radians.
+For example:
+
+$$
+x(n) = 3cos(0.1\pi n + \pi/3)  \ + 2sin(0.5\pi n), \ \ 0\le n \leq 10
+$$ can be evaluated as
+
+```{r}
+# Sinusoidal sequence
+sins_seq <- tibble(
+  n = 0:10,
+  x = 3*cos(0.1*pi*n + pi/3) + 2*sin(0.5*pi*n)
+  
+)
+
+# Create stem plot of sequence
+seq_plot(sins_seq) +
+  ggtitle("Sinusoidal sequence")
+```
+
+#### 6. Random sequences {.unnumbered}
+
+Many practical sequences cannot be described by mathematical expressions like those above and are instead represented using random sequences.
+Random sequences are characterized by parameters of the associated probability density functions.
+There are a number of functions for generating statistical distributions available in [@stats] package provided with base-R.
+
+For instance, `runif` generates uniformly distributed random numbers between `[0, 1]` by default, while `rnorm` generates normally distributed random numbers with mean equal to 0 and standard deviation equal to 1 by default.
+
+::: callout-tip
+R packages tend to have very useful documentation.
+To find out more about a given function, say for instance `randn`, simply run:
+
+`help("rnorm")` or
+
+`?rnorm`
+:::
+
+Other random sequences can be generated using transformations of the above functions.
+
+#### 7. Periodic sequences {.unnumbered}
+
+A sequence $x(n)$ is said to be periodic if $x(n) = x(n + N), \forall n$.
+The smallest *integer* that satisfies this relation is called the *fundamental period*.
+Let's illustrate this with a quick example:
+
+Consider the signal $x[n] = cos[\pi n/4]$
+
+This signal has a period
+
+$N = \frac{2\pi}{\omega_0} \ = \frac{2\pi}{\pi/4} \ = 8$
+
+Let's evaluate if the signal is periodic by proving $x(n + N) = x(n)$
+
+$x(n + 8) = cos[\pi \frac {(n+8)}{4}] \ = cos[\pi n/4 + 2\pi]$
+
+using the compound formula $cos(A+B) = cosAcosB - sinAsinB$
+
+$x(n+8) = cos[\pi n/4]$
+
+$\therefore the \ signal \ is \ periodic.$
+
+::: {style="background:gray"}
+Consider the signal $x[n] = cos[\pi n/4]$
+
+This signal has a period
+
+$N = \frac{2\pi}{\omega_0} \ = \frac{2\pi}{\pi/4} \ = 8$
+
+Let's evaluate if the signal is periodic by proving $x(n + N) = x(n)$
+
+$x(n + 8) = cos[\pi \frac {(n+8)}{4}] \ = cos[\pi n/4 + 2\pi]$
+
+using the compound formula $cos(A+B) = cosAcosB - sinAsinB$
+
+$x(n+8) = cos[\pi n/4]$
+
+$\therefore the \ signal \ is \ periodic.$
+:::
